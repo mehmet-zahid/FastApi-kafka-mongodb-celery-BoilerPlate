@@ -1,0 +1,11 @@
+fastapi[all] >= 0.110.0
+beanie >= 1.25.0
+python-dotenv >= 1.0.1
+python-multipart >= 0.0.9
+aiohttp >= 3.9.3
+aiokafka >= 0.10.0
+loguru >= 0.7.2
+python-jose[cryptography] >= 3.3.0
+passlib[bcrypt] >= 1.7.4
+celery[redis] >= 5.3.6
+git+https://github.com/mehmet-zahid/mongo_helper.git

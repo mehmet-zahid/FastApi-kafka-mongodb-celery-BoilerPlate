@@ -1,0 +1,73 @@
+version: '3.9'
+
+volumes:
+  mongodata:
+  redis_data:
+  kafka_logs:
+  kafka_data:
+
+services:
+  redis:
+    image: redis
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - "redis_data:/data"
+  celery:
+    build: ./src
+    restart: always
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+      - mongo
+    command: celery --app=_celery.celery_main.celery_app worker --concurrency=4 --loglevel=DEBUG
+
+  mongo:
+    image: mongo
+    container_name: hummer_mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: username
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    volumes:
+      - "mongodata:/data/db"
+
+  api:
+    build: ./src
+    restart: always
+    env_file:
+      - ./.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - kafka
+      - mongo
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    restart: always
+    user: root
+    environment:
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://<host_addr>:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_CFG_DELETE_TOPIC_ENABLE: true
+      KAFKA_CFG_RETENTION_MS: 1209600000
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    volumes:
+      - "kafka_logs:/opt/bitnami/kafka/logs"
+      - "kafka_data:/bitnami/kafka"
